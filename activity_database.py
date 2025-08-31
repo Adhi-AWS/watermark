@@ -1,8 +1,9 @@
 import sqlite3
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional
+import uuid
 
 class ActivityDatabase:
     def __init__(self, db_path: str = "activity_audit.db"):
@@ -35,7 +36,17 @@ class ActivityDatabase:
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_activity ON activities(activity)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_date ON activities(created_date)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_session_id ON activities(session_id)')
-        
+
+        # Table for download tokens
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS download_tokens (
+                token TEXT PRIMARY KEY,
+                file_name TEXT NOT NULL,
+                allowed_email TEXT,
+                expires_at TEXT NOT NULL
+            )
+        ''')
+
         conn.commit()
         conn.close()
     
@@ -177,7 +188,51 @@ class ActivityDatabase:
             'downloads': downloads,
             'prints': prints
         }
-    
+
+    def create_download_token(self, file_name: str, allowed_email: str = None,
+                               expire_minutes: int = 10) -> str:
+        """Create a download token with expiration"""
+        token = uuid.uuid4().hex
+        expires_at = (datetime.now() + timedelta(minutes=expire_minutes)).isoformat()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO download_tokens (token, file_name, allowed_email, expires_at) VALUES (?, ?, ?, ?)",
+            (token, file_name, allowed_email, expires_at)
+        )
+        conn.commit()
+        conn.close()
+        return token
+
+    def validate_download_token(self, token: str, file_name: str,
+                                user_email: str = None) -> bool:
+        """Validate token against database and expiration"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT allowed_email, expires_at FROM download_tokens WHERE token = ? AND file_name = ?",
+            (token, file_name)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return False
+        allowed_email, expires_at = row
+        if datetime.fromisoformat(expires_at) < datetime.now():
+            return False
+        if allowed_email:
+            if not user_email or allowed_email.lower() != user_email.lower():
+                return False
+        return True
+
+    def revoke_download_token(self, token: str):
+        """Revoke a token after use"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM download_tokens WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+
     def migrate_json_logs(self, json_file_path: str):
         """Migrate existing JSON logs to database"""
         if not os.path.exists(json_file_path):
