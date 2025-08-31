@@ -1,0 +1,95 @@
+[
+  {
+    "timestamp": "2025-08-29T20:49:08.509460",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "PAGE_VISIT",
+    "file_name": "index",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "files_available": 3
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:49:08.722690",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "PAGE_VIEW",
+    "file_name": "home",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "action": "page_view",
+      "page": "home",
+      "timestamp": "2025-08-29T15:19:08.719Z"
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:49:12.281952",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "FILE_OPENED",
+    "file_name": "employee_data.xlsx",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "sheets_count": 2,
+      "sheet_names": [
+        "Employees",
+        "Department Summary"
+      ]
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:49:35.835935",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "FILE_OPENED",
+    "file_name": "employee_data.xlsx",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "sheets_count": 2,
+      "sheet_names": [
+        "Employees",
+        "Department Summary"
+      ]
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:49:46.448522",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "SECURE_DOWNLOAD",
+    "file_name": "employee_data.xlsx",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "download_type": "protected_excel",
+      "protection_enabled": true,
+      "file_format": "xlsx",
+      "file_size": 6174,
+      "protected_path": "C:\\Users\\rapr2014\\AppData\\Local\\Temp\\10\\secure_employee_data.xlsx"
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:50:23.252915",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "PAGE_VISIT",
+    "file_name": "index",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "files_available": 3
+    }
+  },
+  {
+    "timestamp": "2025-08-29T20:50:25.299880",
+    "session_id": "7ae71152-714c-4149-a019-a67c77fdd9c7",
+    "activity": "PAGE_VIEW",
+    "file_name": "home",
+    "ip_address": "127.0.0.1",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",
+    "additional_info": {
+      "action": "page_view",
+      "page": "home",
+      "timestamp": "2025-08-29T15:20:25.169Z"
+    }
+  }
+]
