@@ -146,11 +146,12 @@ class FileTrackingDatabase:
         return json.dumps(fingerprint_data, sort_keys=True)
 
 class ProtectedFileHandler(FileSystemEventHandler):
-    def __init__(self, tracking_db, server_url='http://127.0.0.1:5000'):
+    def __init__(self, tracking_db, server_url='http://127.0.0.1:5000', logger=None):
         self.tracking_db = tracking_db
         self.server_url = server_url
         self.monitored_directories = set()
-        
+        self.logger = logger or logging.getLogger(__name__)
+
         # Add common directories to monitor
         user_profile = os.environ.get('USERPROFILE', '')
         self.monitored_directories.update([
@@ -160,11 +161,14 @@ class ProtectedFileHandler(FileSystemEventHandler):
             'C:\\temp',
             'C:\\tmp'
         ])
-    
+
     def on_created(self, event):
         """Handle file creation events"""
         if not event.is_directory:
-            self.check_and_log_file_operation('FILE_CREATED', event.src_path)
+            if self.tracking_db.is_protected_file(event.src_path):
+                self.check_and_log_file_operation('FILE_COPIED', event.src_path)
+            else:
+                self.check_and_log_file_operation('FILE_CREATED', event.src_path)
     
     def on_moved(self, event):
         """Handle file move/rename events"""
@@ -199,7 +203,7 @@ class ProtectedFileHandler(FileSystemEventHandler):
                     process_name=process_name,
                     severity=severity
                 )
-                
+
                 # Send security incident to server
                 self.send_security_incident({
                     'eventType': 'PROTECTED_FILE_OPERATION',
@@ -211,13 +215,12 @@ class ProtectedFileHandler(FileSystemEventHandler):
                     'severity': severity,
                     'timestamp': datetime.now().isoformat()
                 })
-                
-                print(f"🚨 SECURITY ALERT: {operation_type} detected on protected file '{original_name}'")
-                print(f"   Source: {source_path}")
-                if dest_path:
-                    print(f"   Destination: {dest_path}")
-                print(f"   Process: {process_name}")
-                print(f"   Severity: {severity}")
+                self.logger.warning(
+                    f"{operation_type} on protected file '{original_name}' | "
+                    f"Source: {source_path} | "
+                    f"Destination: {dest_path if dest_path else 'N/A'} | "
+                    f"Process: {process_name} | Severity: {severity}"
+                )
         
         except Exception as e:
             print(f"Error checking file operation: {e}")
@@ -254,16 +257,8 @@ class SystemFileMonitor:
         self.tracking_db = FileTrackingDatabase()
         self.server_url = server_url
         self.observer = Observer()
-        self.handler = ProtectedFileHandler(self.tracking_db, server_url)
         self.running = False
-        
-        # Initialize browser upload monitor if available
-        if BROWSER_MONITOR_AVAILABLE:
-            self.browser_monitor = BrowserUploadMonitor(server_url)
-            self.browser_observer = None
-        else:
-            self.browser_monitor = None
-        
+
         # Setup logging
         logging.basicConfig(
             level=logging.INFO,
@@ -274,6 +269,16 @@ class SystemFileMonitor:
             ]
         )
         self.logger = logging.getLogger(__name__)
+
+        # File system handler with logger
+        self.handler = ProtectedFileHandler(self.tracking_db, server_url, logger=self.logger)
+
+        # Initialize browser upload monitor if available
+        if BROWSER_MONITOR_AVAILABLE:
+            self.browser_monitor = BrowserUploadMonitor(server_url)
+            self.browser_observer = None
+        else:
+            self.browser_monitor = None
     
     def start_monitoring(self, directories=None):
         """Start monitoring file system for protected file operations"""
@@ -361,13 +366,34 @@ class SystemFileMonitor:
                             'severity': 'HIGH',
                             'timestamp': datetime.now().isoformat()
                         })
+
+                        self.logger.warning(
+                            f"COMMAND_LINE_ACCESS on protected file '{original_name}' | "
+                            f"Command: {cmdline} | Process: {proc_info.get('name', 'unknown')}"
+                        )
         
         except Exception as e:
             self.logger.debug(f"Error checking command for protected files: {e}")
     
     def register_download(self, file_path, original_name, session_id):
         """Register a newly downloaded protected file for monitoring"""
-        return self.tracking_db.register_protected_file(file_path, original_name, session_id)
+        file_hash = self.tracking_db.register_protected_file(file_path, original_name, session_id)
+        # Log the download as an operation for complete audit trail
+        try:
+            self.tracking_db.log_file_operation(
+                operation_type='FILE_DOWNLOADED',
+                source_path=file_path,
+                detected_by='DOWNLOAD',
+                process_name='SYSTEM',
+                severity='LOW'
+            )
+        except Exception as e:
+            self.logger.debug(f"Failed to log download operation: {e}")
+
+        self.logger.info(
+            f"Protected file downloaded: {original_name} | Path: {file_path} | Session: {session_id}"
+        )
+        return file_hash
     
     def stop_monitoring(self):
         """Stop the file monitoring system"""
