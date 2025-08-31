@@ -97,6 +97,19 @@
             border-radius: 20px;
             font-size: 12px;
         }
+
+        .accountability-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.8);
+            color: #333;
+            text-align: center;
+            font-size: 12px;
+            padding: 4px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -136,6 +149,10 @@
 
     <div id="sheets-container">
         <!-- Sheet content will be populated by JavaScript -->
+    </div>
+
+    <div class="accountability-banner">
+        Session: {{ session_id }} | {{ timestamp }}
     </div>
 
     <div class="monitoring-status">
@@ -221,8 +238,13 @@
                 action: 'download',
                 filename: filename
             });
-            
-            window.location.href = `/download-secure/${filename}`;
+
+            fetch(`/generate-token/${filename}`)
+                .then(response => response.json())
+                .then(data => {
+                    const token = data.token;
+                    window.location.href = `/download-secure/${filename}?token=${token}`;
+                });
         }
 
         function trackSecurityEvent(eventType, eventData = {}) {

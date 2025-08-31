@@ -168,11 +168,12 @@ def view_file(filename):
         
         print(f"DEBUG: Sending data for {filename} with {len(sheets_data)} sheets")
         print(f"DEBUG: Sheet names: {list(sheets_data.keys())}")
-        
-        return render_template('viewer.html', 
-                             filename=filename, 
+
+        return render_template('viewer.html',
+                             filename=filename,
                              excel_data=excel_data_json,
-                             session_id=session['session_id'])
+                             session_id=session['session_id'],
+                             timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
     
     except Exception as e:
         log_activity(session['session_id'], 'FILE_ERROR', filename, {'error': str(e)})
@@ -233,12 +234,28 @@ def admin_logs():
     """View activity logs (admin only)"""
     return render_template('admin.html', logs=activity_logs)
 
+@app.route('/generate-token/<filename>')
+def generate_token(filename):
+    """Generate a temporary download token"""
+    if 'session_id' not in session:
+        session['session_id'] = generate_session_id()
+    email = request.args.get('email')
+    token = db.create_download_token(filename, allowed_email=email)
+    log_activity(session['session_id'], 'TOKEN_GENERATED', filename, {'token': token, 'allowed_email': email})
+    return jsonify({'token': token, 'expires_in_minutes': 10})
+
 @app.route('/download-secure/<filename>')
 def download_secure(filename):
     """Generate encrypted, edit-only Excel file for download"""
     if 'session_id' not in session:
         session['session_id'] = generate_session_id()
-    
+
+    token = request.args.get('token')
+    user_email = request.args.get('email')
+    if not token or not db.validate_download_token(token, filename, user_email):
+        log_activity(session['session_id'], 'DOWNLOAD_UNAUTHORIZED', filename, {'token': token, 'email': user_email})
+        return "Unauthorized or expired token", 403
+
     file_path = os.path.join(EXCEL_FILES_DIR, filename)
     
     if not os.path.exists(file_path):
@@ -301,9 +318,11 @@ def download_secure(filename):
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
-        
+
         print(f"DEBUG: Response headers: {dict(response.headers)}")
-        
+
+        db.revoke_download_token(token)
+
         return response
     
     except Exception as e:
