@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Activity Audit - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .activity-log {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .log-entry {
+            border-left: 4px solid #007bff;
+            margin-bottom: 8px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 0 8px 8px 0;
+            transition: all 0.2s ease;
+        }
+        .log-entry:hover {
+            background-color: #e9ecef;
+            transform: translateX(2px);
+        }
+        .log-entry.file-opened { border-left-color: #28a745; }
+        .log-entry.print-action { border-left-color: #ffc107; }
+        .log-entry.security-event { border-left-color: #dc3545; }
+        .log-entry.download-action { border-left-color: #17a2b8; }
+        .log-entry.user-interaction { border-left-color: #6f42c1; }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            transition: transform 0.2s ease;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .filter-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .export-btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 8px 20px;
+            color: white;
+            transition: all 0.2s ease;
+        }
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .pagination-info {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        
+        .activity-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 12px;
+        }
+        
+        .table-responsive {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1><i class="bi bi-graph-up"></i> Historical Activity Audit</h1>
+                    <div>
+                        <button class="btn export-btn me-2" onclick="exportData()">
+                            <i class="bi bi-download"></i> Export CSV
+                        </button>
+                        <a href="/admin/logs" class="btn btn-outline-primary">
+                            <i class="bi bi-lightning"></i> Real-time View
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-2">
+                <div class="card stats-card text-center">
+                    <div class="card-body">
+                        <i class="bi bi-activity fs-1"></i>
+                        <h3 id="total-activities">0</h3>
+                        <p class="mb-0">Total Activities</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-success text-white text-center">
+                    <div class="card-body">
+                        <i class="bi bi-people fs-1"></i>
+                        <h3 id="unique-sessions">0</h3>
+                        <p class="mb-0">Sessions</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-info text-white text-center">
+                    <div class="card-body">
+                        <i class="bi bi-folder-open fs-1"></i>
+                        <h3 id="file-opens">0</h3>
+                        <p class="mb-0">File Opens</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-primary text-white text-center">
+                    <div class="card-body">
+                        <i class="bi bi-download fs-1"></i>
+                        <h3 id="downloads">0</h3>
+                        <p class="mb-0">Downloads</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-warning text-white text-center">
+                    <div class="card-body">
+                        <i class="bi bi-printer fs-1"></i>
+                        <h3 id="prints">0</h3>
+                        <p class="mb-0">Prints</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="card bg-secondary text-white text-center">
+                    <div class="card-body">
+                        <i class="bi bi-clock fs-1"></i>
+                        <h3 id="date-range">Today</h3>
+                        <p class="mb-0">Date Range</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced Filters -->
+        <div class="filter-section">
+            <h5><i class="bi bi-funnel"></i> Advanced Filters</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">File Name</label>
+                    <select class="form-select" id="file-filter">
+                        <option value="">All Files</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Activity Type</label>
+                    <select class="form-select" id="activity-filter">
+                        <option value="">All Activities</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start-date">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end-date">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-4">
+                    <label class="form-label">Session ID (Partial)</label>
+                    <input type="text" class="form-control" id="session-filter" placeholder="Enter session ID">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Limit Results</label>
+                    <select class="form-select" id="limit-filter">
+                        <option value="100">100</option>
+                        <option value="500" selected>500</option>
+                        <option value="1000">1000</option>
+                        <option value="5000">5000</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i> Clear Filters
+                    </button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-info w-100" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pagination Info -->
+        <div class="pagination-info">
+            <div class="d-flex justify-content-between align-items-center">
+                <span id="results-info">Showing results...</span>
+                <span id="last-updated">Last updated: <span id="update-time">--</span></span>
+            </div>
+        </div>
+        
+        <!-- Activity Table -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-table"></i> Activity Log History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Activity</th>
+                                <th>File Name</th>
+                                <th>Session ID</th>
+                                <th>IP Address</th>
+                                <th>Additional Info</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activity-table-body">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentData = [];
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFilterOptions();
+            setDefaultDates();
+            loadData();
+        });
+        
+        function setDefaultDates() {
+            const today = new Date();
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            document.getElementById('start-date').value = weekAgo.toISOString().split('T')[0];
+            document.getElementById('end-date').value = today.toISOString().split('T')[0];
+        }
+        
+        async function loadFilterOptions() {
+            try {
+                // Load file names
+                const fileResponse = await fetch('/api/file-names');
+                const files = await fileResponse.json();
+                const fileSelect = document.getElementById('file-filter');
+                files.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file;
+                    option.textContent = file;
+                    fileSelect.appendChild(option);
+                });
+                
+                // Load activity types
+                const activityResponse = await fetch('/api/activity-types');
+                const activities = await activityResponse.json();
+                const activitySelect = document.getElementById('activity-filter');
+                activities.forEach(activity => {
+                    const option = document.createElement('option');
+                    option.value = activity;
+                    option.textContent = activity;
+                    activitySelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+        
+        async function loadData() {
+            try {
+                await Promise.all([loadStatistics(), loadActivities()]);
+                updateLastUpdated();
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        async function loadStatistics() {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            const response = await fetch(`/api/statistics?start_date=${startDate}&end_date=${endDate}`);
+            const stats = await response.json();
+            
+            document.getElementById('total-activities').textContent = stats.total_activities;
+            document.getElementById('unique-sessions').textContent = stats.unique_sessions;
+            document.getElementById('file-opens').textContent = stats.file_opens;
+            document.getElementById('downloads').textContent = stats.downloads;
+            document.getElementById('prints').textContent = stats.prints;
+            
+            // Update date range display
+            const range = startDate === endDate ? 'Today' : `${startDate} to ${endDate}`;
+            document.getElementById('date-range').textContent = range;
+        }
+        
+        async function loadActivities() {
+            const params = new URLSearchParams();
+            
+            const fileName = document.getElementById('file-filter').value;
+            const activityType = document.getElementById('activity-filter').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const sessionId = document.getElementById('session-filter').value;
+            const limit = document.getElementById('limit-filter').value;
+            
+            if (fileName) params.append('file_name', fileName);
+            if (activityType) params.append('activity_type', activityType);
+            if (startDate) params.append('start_date', startDate);
+            if (endDate) params.append('end_date', endDate);
+            if (sessionId) params.append('session_id', sessionId);
+            if (limit) params.append('limit', limit);
+            
+            const response = await fetch(`/api/historical-logs?${params}`);
+            currentData = await response.json();
+            
+            displayActivities(currentData);
+            updateResultsInfo(currentData.length);
+        }
+        
+        function displayActivities(activities) {
+            const tbody = document.getElementById('activity-table-body');
+            tbody.innerHTML = '';
+            
+            activities.forEach(activity => {
+                const row = document.createElement('tr');
+                
+                // Format timestamp
+                const timestamp = new Date(activity.timestamp).toLocaleString();
+                
+                // Get activity badge class
+                const badgeClass = getActivityBadgeClass(activity.activity);
+                
+                // Format additional info
+                const additionalInfo = activity.additional_info ? 
+                    Object.entries(activity.additional_info)
+                        .map(([key, value]) => `${key}: ${value}`)
+                        .join(', ') : '';
+                
+                row.innerHTML = `
+                    <td class="text-nowrap">${timestamp}</td>
+                    <td><span class="badge ${badgeClass}">${activity.activity}</span></td>
+                    <td>${activity.file_name}</td>
+                    <td class="font-monospace">${activity.session_id.substring(0, 8)}...</td>
+                    <td>${activity.ip_address || ''}</td>
+                    <td class="text-truncate" style="max-width: 200px;" title="${additionalInfo}">${additionalInfo}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        function getActivityBadgeClass(activity) {
+            if (activity.includes('OPENED') || activity.includes('VIEWED')) return 'bg-success';
+            if (activity.includes('PRINT')) return 'bg-warning text-dark';
+            if (activity.includes('DOWNLOAD')) return 'bg-primary';
+            if (activity.includes('ERROR') || activity.includes('BLOCKED')) return 'bg-danger';
+            if (activity.includes('CLICK') || activity.includes('SCROLL')) return 'bg-secondary';
+            return 'bg-info';
+        }
+        
+        function updateResultsInfo(count) {
+            const limit = document.getElementById('limit-filter').value;
+            const info = count >= limit ? 
+                `Showing first ${count} results (limit: ${limit})` : 
+                `Showing ${count} results`;
+            document.getElementById('results-info').textContent = info;
+        }
+        
+        function updateLastUpdated() {
+            document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+        }
+        
+        function applyFilters() {
+            loadData();
+        }
+        
+        function clearFilters() {
+            document.getElementById('file-filter').value = '';
+            document.getElementById('activity-filter').value = '';
+            document.getElementById('session-filter').value = '';
+            document.getElementById('limit-filter').value = '500';
+            setDefaultDates();
+            loadData();
+        }
+        
+        function refreshData() {
+            loadData();
+        }
+        
+        function exportData() {
+            if (currentData.length === 0) {
+                alert('No data to export');
+                return;
+            }
+            
+            // Convert to CSV
+            const headers = ['Timestamp', 'Activity', 'File Name', 'Session ID', 'IP Address', 'User Agent', 'Additional Info'];
+            const csvContent = [
+                headers.join(','),
+                ...currentData.map(row => [
+                    `"${row.timestamp}"`,
+                    `"${row.activity}"`,
+                    `"${row.file_name}"`,
+                    `"${row.session_id}"`,
+                    `"${row.ip_address || ''}"`,
+                    `"${row.user_agent || ''}"`,
+                    `"${row.additional_info ? JSON.stringify(row.additional_info) : ''}"`
+                ].join(','))
+            ].join('\\n');
+            
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `activity_audit_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

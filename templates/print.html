@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print - {{ filename }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: white;
+        }
+        
+        .print-header {
+            text-align: center;
+            border-bottom: 2px solid #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        
+        .print-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            font-size: 12px;
+        }
+        
+        .print-table th,
+        .print-table td {
+            border: 1px solid #333;
+            padding: 5px;
+            text-align: left;
+        }
+        
+        .print-table th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+        }
+        
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 4rem;
+            color: rgba(0,0,0,0.1);
+            z-index: 10;
+            pointer-events: none;
+            font-weight: bold;
+        }
+        
+        .print-footer {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body onload="window.print();">
+    
+    <!-- Watermark -->
+    <div class="watermark">SECURE PRINT</div>
+    
+    <!-- Print Header -->
+    <div class="print-header">
+        <h2>{{ filename }}</h2>
+        <p>Printed on: <span id="print-date"></span> | Session: {{ session_id[:8] if session_id else 'Unknown' }}...</p>
+        <p><strong>⚠️ CONFIDENTIAL DOCUMENT - PRINTING TRACKED AND LOGGED</strong></p>
+    </div>
+    
+    <!-- Content -->
+    {% for sheet_name, sheet_html in sheets.items() %}
+    <div class="sheet-section">
+        <h3>Sheet: {{ sheet_name }}</h3>
+        {{ sheet_html|safe }}
+    </div>
+    {% if not loop.last %}<div style="page-break-before: always;"></div>{% endif %}
+    {% endfor %}
+    
+    <!-- Print Footer -->
+    <div class="print-footer">
+        This document was accessed through secure viewer | All activities are tracked and logged
+    </div>
+
+    <script>
+        // Set print date
+        document.getElementById('print-date').textContent = new Date().toLocaleString();
+        
+        // Track print completion
+        window.addEventListener('afterprint', function() {
+            fetch('/track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    activity: 'PRINT_COMPLETED',
+                    filename: '{{ filename }}',
+                    info: {
+                        timestamp: new Date().toISOString(),
+                        print_time: new Date().toLocaleString()
+                    }
+                })
+            }).then(() => {
+                // Close print window after a delay
+                setTimeout(() => {
+                    window.close();
+                }, 2000);
+            });
+        });
+        
+        // Track if user cancels print
+        window.addEventListener('beforeprint', function() {
+            fetch('/track', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    activity: 'PRINT_DIALOG_OPENED',
+                    filename: '{{ filename }}',
+                    info: {
+                        timestamp: new Date().toISOString()
+                    }
+                })
+            });
+        });
+    </script>
+</body>
+</html>
